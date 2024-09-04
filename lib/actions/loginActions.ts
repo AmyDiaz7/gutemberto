@@ -32,7 +32,7 @@ export async function login(formData: FormData) {
   }
 
   try {
-    redirect("/private");
+    redirect("/");
   } catch (error) {
     console.error("redirect", error);
   }

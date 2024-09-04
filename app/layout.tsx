@@ -2,10 +2,9 @@ import "@/styles/globals.css";
 import { Metadata, Viewport } from "next";
 import clsx from "clsx";
 
-import { Providers } from "./providers";
-
+import { Providers } from "@/app/providers";
 import { siteConfig } from "@/config/site";
-import { fontText } from "@/ui/fonts";
+import { fontText, fontTitle } from "@/ui/fonts";
 
 export const metadata: Metadata = {
   title: {
@@ -35,16 +34,13 @@ export default function RootLayout({
       <head />
       <body
         className={clsx(
-          "min-h-screen bg-background font-text antialiased",
-          fontText.variable
+          "min-h-screen font-text antialiased",
+          fontText.variable,
+          fontTitle.variable
         )}
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
-          <div className="relative flex flex-col h-screen">
-            <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
-              {children}
-            </main>
-          </div>
+          <main className="w-screen h-screen flex">{children}</main>
         </Providers>
       </body>
     </html>

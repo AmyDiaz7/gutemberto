@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Input, Button } from "@nextui-org/react";
 import { z } from "zod";
 
-import { login, signup } from "./actions";
+import { login, signup } from "@/lib/actions/loginActions";
 
 const FormSchema = z.object({
   email: z
