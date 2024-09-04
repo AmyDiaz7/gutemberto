@@ -1,9 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
+import type { FormState } from "./types";
+
+import { useState, useEffect, Suspense } from "react";
 import { Input, Button } from "@nextui-org/react";
 import { z } from "zod";
 
-import { login, signup } from "@/lib/actions/loginActions";
+import LoginButton from "./components/loginButton";
+
+import { signup } from "@/lib/actions/loginActions";
 
 const FormSchema = z.object({
   email: z
@@ -16,11 +20,6 @@ const FormSchema = z.object({
     .string({ invalid_type_error: "Ingresa tu contraseña" })
     .min(1, { message: "Ingresa tu contraseña" }),
 });
-
-interface FormState {
-  valid: boolean;
-  errors?: { [field: string]: string[] };
-}
 
 interface FormValues {
   email: string | null;
@@ -79,27 +78,6 @@ export default function LoginPage() {
     if (blurredInputs.length > 0) validateForm();
   }, [formValues]);
 
-  function validateLogin(formData: FormData) {
-    if (blurredInputs.length !== 2) setBlurredInputs(["email", "password"]);
-
-    validateForm();
-
-    if (formState.valid) {
-      login(formData);
-
-      /*if (result === "Credenciales incorrectas") {
-        setFormState({
-          valid: false,
-          errors: {
-            email: ["Verifica tu correo electronico"],
-            password: ["Verifica tu contraseña"],
-          },
-        });
-        setInvalidCredentials(true);
-      } else alert("hola");*/
-    }
-  }
-
   return (
     <div className="bg-background container my-auto mx-auto max-w-sm py-16 px-10 rounded-lg drop-shadow">
       <h1 className="font-title text-center text-3xl font-bold mb-8">
@@ -128,6 +106,7 @@ export default function LoginPage() {
           type="email"
           onBlur={() => handleBlur("email")}
           onChange={handleInputChange}
+          onClear={() => setFormValues((prev) => ({ ...prev, email: null }))}
         />
         <Input
           isRequired
@@ -157,14 +136,16 @@ export default function LoginPage() {
             El correo y la contraseña no coinciden, por favor verificalos
           </p>
         )}
-        <Button
-          className="mb-2"
-          color="primary"
-          formAction={login}
-          type="submit"
-        >
-          Ingresar
-        </Button>
+        <Suspense>
+          <LoginButton
+            blurredInputs={blurredInputs}
+            formState={formState}
+            handleValidate={validateForm}
+            setBlurredInputs={setBlurredInputs}
+            setFormState={setFormState}
+            setInvalidCredentials={setInvalidCredentials}
+          />
+        </Suspense>
         <Button
           color="primary"
           formAction={signup}

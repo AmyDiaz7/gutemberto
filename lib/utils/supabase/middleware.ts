@@ -47,7 +47,12 @@ export async function updateSession(request: NextRequest) {
 
     url.pathname = "/login";
 
+    url.searchParams.set("next", request.nextUrl.pathname);
+
     return NextResponse.redirect(url);
+  } else if (user && request.nextUrl.pathname.startsWith("/login")) {
+    // user is logged in, redirect to home
+    return NextResponse.redirect(request.nextUrl.origin);
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
