@@ -3,5 +3,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="w-full h-full flex bg-orange-200">{children}</div>;
+  return (
+    <div className="w-full h-full flex bg-orange-200 light">{children}</div>
+  );
 }

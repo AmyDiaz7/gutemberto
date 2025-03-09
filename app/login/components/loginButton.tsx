@@ -1,7 +1,7 @@
 import type { FormState } from "../types";
 
 import { SetStateAction } from "react";
-import { Button } from "@nextui-org/react";
+import { Button } from "@heroui/react";
 import { useSearchParams } from "next/navigation";
 
 import { login } from "@/lib/actions/loginActions";
@@ -27,7 +27,6 @@ export default function LoginButton({
 
   async function validateLogin(formData: FormData) {
     if (blurredInputs.length !== 2) setBlurredInputs(["email", "password"]);
-
     handleValidate();
 
     if (formState.valid) {
@@ -52,6 +51,9 @@ export default function LoginButton({
       color="primary"
       formAction={validateLogin}
       type="submit"
+      onPointerDown={() => {
+        if (blurredInputs.length !== 2) setBlurredInputs(["email", "password"]);
+      }}
     >
       Ingresar
     </Button>

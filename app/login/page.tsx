@@ -2,7 +2,7 @@
 import type { FormState } from "./types";
 
 import { useState, useEffect, Suspense } from "react";
-import { Input, Button } from "@nextui-org/react";
+import { Input, Button } from "@heroui/react";
 import { z } from "zod";
 
 import LoginButton from "./components/loginButton";
@@ -19,6 +19,9 @@ const FormSchema = z.object({
   password: z
     .string({ invalid_type_error: "Ingresa tu contraseña" })
     .min(1, { message: "Ingresa tu contraseña" }),
+  /*.refine((value) => value.length >= 6, {
+      message: "Tu contraseña debe tener al menos 6 caracteres",
+    })*/
 });
 
 interface FormValues {
@@ -80,16 +83,17 @@ export default function LoginPage() {
 
   return (
     <div className="bg-background container my-auto mx-auto max-w-sm py-16 px-10 rounded-lg drop-shadow">
-      <h1 className="font-title text-center text-3xl font-bold mb-8">
+      <h1 className="text-black font-title text-center text-3xl font-bold mb-8">
         Gutemberto
       </h1>
-      <form className="flex flex-col">
+      <form className="flex flex-col color-black">
         <Input
           isClearable
           isRequired
           classNames={{
             base: "mb-6",
             label: "font-medium text-md",
+            clearButton: "text-black",
           }}
           errorMessage={
             blurredInputs.includes("email")
@@ -152,7 +156,7 @@ export default function LoginPage() {
           type="submit"
           variant="light"
         >
-          Registro
+          Olvide mi contraseña
         </Button>
       </form>
     </div>

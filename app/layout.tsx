@@ -1,5 +1,5 @@
 import "@/styles/globals.css";
-import { Metadata, Viewport } from "next";
+import { Metadata } from "next";
 import clsx from "clsx";
 
 import { Providers } from "@/app/providers";
@@ -17,13 +17,6 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "white" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
-  ],
-};
-
 export default function RootLayout({
   children,
 }: {
@@ -39,7 +32,7 @@ export default function RootLayout({
           fontTitle.variable
         )}
       >
-        <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
+        <Providers>
           <main className="w-screen h-screen flex">{children}</main>
         </Providers>
       </body>
