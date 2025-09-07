@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html suppressHydrationWarning lang="es">
+    <html suppressHydrationWarning className="!pr-0" lang="es">
       <head />
       <body
         className={clsx(
@@ -32,9 +32,7 @@ export default function RootLayout({
           fontTitle.variable
         )}
       >
-        <Providers>
-          <main className="w-screen h-screen flex">{children}</main>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

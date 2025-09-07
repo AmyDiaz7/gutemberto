@@ -15,15 +15,22 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   // Get each parameter from the URL, with default values if they're not provided
-  const sort = searchParams.get("sort") || "sku"; // Which column to sort by (defaults to 'id')
-  const order = searchParams.get("order") || "asc"; // Sort order: ascending or descending (defaults to 'asc')
+  const sort = searchParams.get("sort") || "sku"; // Which column to sort by (defaults to 'sku')
+  // Accept both asc/desc and ascending/descending
+  const rawOrder = (searchParams.get("order") || "asc").toLowerCase();
+  const order =
+    rawOrder === "descending" || rawOrder === "desc" ? "desc" : "asc"; // normalized
   const limit = parseInt(searchParams.get("limit") || "10"); // How many products per page (defaults to 10)
   const page = parseInt(searchParams.get("page") || "1"); // Which page to show (defaults to page 1)
   const search = searchParams.get("search") || ""; // Text to search for (defaults to empty)
 
   // Get all values for multi-select filters
-  const categorias = searchParams.get("categoria")?.split(",") || [];
-  const estados = searchParams.get("estado")?.split(",") || [];
+  const categorias = (searchParams.get("categoria")?.split(",") || []).filter(
+    Boolean
+  );
+  const estados = (searchParams.get("estado")?.split(",") || []).filter(
+    Boolean
+  );
 
   // Calculate where to start getting products from (for pagination)
   // Example: on page 1 with limit 10, start at 0. On page 2, start at 10.
@@ -46,18 +53,16 @@ export async function GET(request: Request) {
 
   // Apply categoria filter (if one or more selected)
   if (categorias.length > 0) {
-    console.log(categorias);
     query = query.in("categoria", categorias);
   }
 
   // Apply estado filter (if one or more selected)
   if (estados.length > 0) {
-    console.log(estados);
     query = query.in("estado", estados);
   }
 
   // Sort the results by the column and direction specified
-  query = query.order(sort, { ascending: order.toLowerCase() === "ascending" });
+  query = query.order(sort, { ascending: order === "asc" });
 
   // Only get the specific "page" of results we need
   query = query.range(offset, offset + limit - 1);
