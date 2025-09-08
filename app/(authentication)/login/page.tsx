@@ -11,14 +11,10 @@ import { signup } from "@/lib/actions/loginActions";
 
 const FormSchema = z.object({
   email: z
-    .string({
-      invalid_type_error: "Ingresa tu correo",
-    })
-    .min(1, { message: "Ingresa tu correo" })
-    .email({ message: "Ingresa un correo valido" }),
-  password: z
-    .string({ invalid_type_error: "Ingresa tu contraseña" })
-    .min(1, { message: "Ingresa tu contraseña" }),
+    .string()
+    .min(1, "Ingresa tu correo")
+    .email("Ingresa un correo valido"),
+  password: z.string().min(1, "Ingresa tu contraseña"),
   /*.refine((value) => value.length >= 6, {
       message: "Tu contraseña debe tener al menos 6 caracteres",
     })*/
@@ -60,9 +56,11 @@ export default function LoginPage() {
     const validation = FormSchema.safeParse(formValues);
 
     if (!validation.success) {
+      const { fieldErrors } = validation.error.flatten();
+
       setFormState({
         valid: false,
-        errors: validation.error.formErrors.fieldErrors,
+        errors: fieldErrors,
       });
     } else {
       setFormState({ valid: true });

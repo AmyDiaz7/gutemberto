@@ -21,6 +21,7 @@
     "@heroui/switch": "2.2.13",
     "@heroui/system": "2.4.11",
     "@heroui/theme": "2.4.11",
+    "@hookform/resolvers": "^5.2.1",
     "@react-aria/ssr": "3.9.4",
     "@react-aria/visually-hidden": "3.8.12",
     "@react-stately/data": "^3.12.2",
@@ -34,7 +35,8 @@
     "next-themes": "^0.2.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "zod": "^3.24.2"
+    "react-hook-form": "^7.62.0",
+    "zod": "^4.1.5"
   },
   "devDependencies": {
     "@types/node": "20.5.7",

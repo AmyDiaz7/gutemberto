@@ -1,13 +1,15 @@
 "use client";
 import type { Product } from "@/lib/types/database";
 
-import { Pagination, SortDescriptor } from "@heroui/react";
-import { useState, useEffect, useTransition, useRef } from "react";
+import { Button, Pagination, SortDescriptor } from "@heroui/react";
+import { useState, useEffect, useTransition, useRef, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 import ActiveFilters from "./ActiveFilters";
 import FiltersBar from "./FiltersBar";
 import ProductDataTable from "./ProductDataTable";
+import ProductForm from "./ProductForm";
+import ConfirmDialog from "./ConfirmDialog";
 
 const statusOptions: Record<string, string> = {
   disponible: "Disponible",
@@ -23,6 +25,12 @@ export default function ProductTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deletingSku, setDeletingSku] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { replace } = useRouter();
   const searchParams = useSearchParams();
@@ -210,47 +218,61 @@ export default function ProductTable() {
     fetchCategories();
   }, []);
 
-  // Fetch data whenever search params change (cancel stale requests)
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
+  // Fetch data (reusable) and cancel stale requests
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
 
-      // cancel previous in-flight request
-      abortRef.current?.abort();
-      const controller = new AbortController();
+    // cancel previous in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
 
-      abortRef.current = controller;
+    abortRef.current = controller;
 
-      const requestId = ++requestIdRef.current;
-      const url = `/api/data?${searchParams.toString()}`;
+    const requestId = ++requestIdRef.current;
+    const url = `/api/data?${searchParams.toString()}`;
 
-      try {
-        const response = await fetch(url, { signal: controller.signal });
-        const { data, pagination } = await response.json();
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      const { data, pagination } = await response.json();
 
-        // ignore stale responses
-        if (requestId === requestIdRef.current && !controller.signal.aborted) {
-          setList(data);
-          if (pagination) {
-            setTotal(pagination.total ?? 0);
-            setTotalPages(pagination.totalPages ?? 1);
-          } else {
-            setTotal(0);
-            setTotalPages(1);
-          }
+      // ignore stale responses
+      if (requestId === requestIdRef.current && !controller.signal.aborted) {
+        const newTotal = pagination?.total ?? 0;
+        const newTotalPages = pagination?.totalPages ?? 1;
+
+        // If the current page is now out of range (e.g., deleted last item on last page),
+        // navigate to the last valid page and let the effect refetch.
+        const lastValidPage = newTotalPages === 0 ? 1 : newTotalPages;
+
+        if (currentPage > lastValidPage) {
+          setTotal(newTotal);
+          setTotalPages(newTotalPages);
+          const params = getLatestParams();
+
+          params.set("page", String(lastValidPage));
+          startTransition(() => replace(`${pathname}?${params.toString()}`));
+
+          return; // Avoid briefly showing an empty page; we'll refetch on URL change
+        }
+
+        setList(data);
+        setTotal(newTotal);
+        setTotalPages(newTotalPages);
+        setIsLoading(false);
+      }
+    } catch (error: any) {
+      if (error?.name !== "AbortError") {
+        if (requestId === requestIdRef.current) {
           setIsLoading(false);
         }
-      } catch (error: any) {
-        if (error?.name !== "AbortError") {
-          if (requestId === requestIdRef.current) {
-            setIsLoading(false);
-          }
-        }
       }
-    };
+    }
+  }, [searchParams, pathname, replace, currentPage]);
 
+  // Refetch when search params change
+  useEffect(() => {
     fetchData();
-  }, [searchParams]);
+  }, [fetchData]);
 
   // Sync local selection state when URL changes externally
   useEffect(() => {
@@ -264,6 +286,18 @@ export default function ProductTable() {
 
   return (
     <div className="space-y-4 w-full overflow-x-hidden p-6">
+      <div className="flex justify-end">
+        <Button
+          color="primary"
+          onPress={() => {
+            setFormMode("create");
+            setEditing(null);
+            setFormOpen(true);
+          }}
+        >
+          Añadir producto
+        </Button>
+      </div>
       <FiltersBar
         categories={categories}
         isLoadingCategories={isLoadingCategories}
@@ -315,7 +349,15 @@ export default function ProductTable() {
         items={list}
         loading={loading}
         sortDescriptor={sortDescriptor}
-        onRowAction={(key: string | number) => alert(String(key))}
+        onDelete={async (sku: string) => {
+          setDeletingSku(sku);
+          setConfirmOpen(true);
+        }}
+        onEdit={(item) => {
+          setFormMode("edit");
+          setEditing(item);
+          setFormOpen(true);
+        }}
         onSortChange={handleSortChange}
       />
 
@@ -344,6 +386,78 @@ export default function ProductTable() {
           />
         </div>
       )}
+
+      <ProductForm
+        initial={editing ?? undefined}
+        isOpen={formOpen}
+        mode={formMode}
+        onClose={() => setFormOpen(false)}
+        onSaved={() => {
+          // Refetch immediately after create/edit
+          fetchData();
+        }}
+      />
+
+      <ConfirmDialog
+        cancelText="Cancelar"
+        confirmText="Eliminar"
+        description={
+          deletingSku
+            ? `¿Seguro que deseas eliminar el producto ${deletingSku}?`
+            : undefined
+        }
+        isLoading={deleting}
+        isOpen={confirmOpen}
+        title="Eliminar producto"
+        variant="danger"
+        onCancel={() => {
+          setConfirmOpen(false);
+          setDeletingSku(null);
+        }}
+        onConfirm={async () => {
+          if (!deletingSku) return;
+
+          setDeleting(true);
+          setIsLoading(true);
+          try {
+            const res = await fetch(
+              `/api/products/${encodeURIComponent(deletingSku)}`,
+              { method: "DELETE" }
+            );
+
+            if (res.ok) {
+              // If we just deleted the only item on the last page, move to the previous page
+              const isLastItemOnPage =
+                list.length === 1 &&
+                currentPage > 1 &&
+                currentPage === totalPages;
+
+              if (isLastItemOnPage) {
+                const params = getLatestParams();
+
+                params.set("page", String(currentPage - 1));
+                startTransition(() =>
+                  replace(`${pathname}?${params.toString()}`)
+                );
+              } else {
+                await fetchData();
+              }
+            }
+          } finally {
+            setDeleting(false);
+            setConfirmOpen(false);
+            setDeletingSku(null);
+            // If request failed, stop page loading state
+            setIsLoading(false);
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmOpen(false);
+            setDeletingSku(null);
+          }
+        }}
+      />
     </div>
   );
 }

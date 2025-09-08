@@ -104,13 +104,13 @@ export default function Sidebar() {
         <Skeleton className="w-full rounded-lg" isLoaded={userEmail !== null}>
           <Button
             className="w-full"
+            color="default"
             endContent={<LogOut size={16} />}
+            variant="light"
             onPress={async () => {
               await supabase.auth.signOut();
               router.push("/login");
             }}
-            variant="light"
-            color="default"
           >
             Cerrar sesión
           </Button>
@@ -134,11 +134,11 @@ export default function Sidebar() {
         })}
         <NavbarMenuItem className="text-center">
           <Button
-            color="danger"
             className="mt-2"
+            color="danger"
             endContent={<LogOut size={16} />}
-            variant="flat"
             size="lg"
+            variant="flat"
             onPress={async () => {
               await supabase.auth.signOut();
               router.push("/login");

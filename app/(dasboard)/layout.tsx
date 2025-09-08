@@ -8,7 +8,7 @@ export default function LoginLayout({
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       <Sidebar />
-      <main className="flex-1 h-screen overflow-auto">{children}</main>
+      <main className="flex-1 h-screen overflow-hidden">{children}</main>
     </div>
   );
 }
