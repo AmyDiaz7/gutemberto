@@ -2,6 +2,7 @@
 import type { Product } from "@/lib/types/database";
 
 import { Button, Pagination, SortDescriptor } from "@heroui/react";
+import { Plus } from "lucide-react";
 import { useState, useEffect, useTransition, useRef, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
@@ -286,18 +287,7 @@ export default function ProductTable() {
 
   return (
     <div className="space-y-4 w-full overflow-x-hidden p-6">
-      <div className="flex justify-end">
-        <Button
-          color="primary"
-          onPress={() => {
-            setFormMode("create");
-            setEditing(null);
-            setFormOpen(true);
-          }}
-        >
-          Añadir producto
-        </Button>
-      </div>
+      {/* Top action removed; moved to pagination bar (desktop) and a FAB on mobile */}
       <FiltersBar
         categories={categories}
         isLoadingCategories={isLoadingCategories}
@@ -361,31 +351,49 @@ export default function ProductTable() {
         onSortChange={handleSortChange}
       />
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-          <div className="text-sm text-default-500">
+      {/* Pagination + Actions row */}
+      <div className="pt-2">
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
+          {/* Left: results count */}
+          <div className="text-sm text-default-500 w-full text-center sm:text-left sm:flex-1">
             Mostrando {total === 0 ? 0 : (currentPage - 1) * limit + 1}–
             {Math.min(total, currentPage * limit)} de {total} productos
           </div>
-          <Pagination
-            isCompact
-            showControls
-            page={currentPage}
-            total={totalPages}
-            onChange={(page) => {
-              setIsLoading(true);
-              const params = getLatestParams();
+          {/* Middle: pagination */}
+          <div className="w-full sm:flex-1 flex justify-center">
+            <Pagination
+              isCompact
+              showControls
+              page={currentPage}
+              total={Math.max(totalPages, 1)}
+              onChange={(page) => {
+                setIsLoading(true);
+                const params = getLatestParams();
 
-              params.set("page", String(page));
+                params.set("page", String(page));
 
-              startTransition(() =>
-                replace(`${pathname}?${params.toString()}`)
-              );
-            }}
-          />
+                startTransition(() =>
+                  replace(`${pathname}?${params.toString()}`)
+                );
+              }}
+            />
+          </div>
+          {/* Right: add button (desktop only) */}
+          <div className="w-full sm:flex-1 flex justify-end">
+            <Button
+              className="hidden sm:inline-flex"
+              color="primary"
+              onPress={() => {
+                setFormMode("create");
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              Añadir producto
+            </Button>
+          </div>
         </div>
-      )}
+      </div>
 
       <ProductForm
         initial={editing ?? undefined}
@@ -458,6 +466,22 @@ export default function ProductTable() {
           }
         }}
       />
+
+      {/* Mobile floating action button */}
+      <Button
+        isIconOnly
+        aria-label="Añadir producto"
+        className="sm:hidden fixed bottom-6 right-6 z-50 shadow-xl rounded-full h-16 w-16"
+        color="primary"
+        size="lg"
+        onPress={() => {
+          setFormMode("create");
+          setEditing(null);
+          setFormOpen(true);
+        }}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </div>
   );
 }
