@@ -1,3 +1,4 @@
+// Estructura base para la página de login
 export default function LoginLayout({
   children,
 }: {

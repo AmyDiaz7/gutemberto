@@ -1,5 +1,5 @@
 "use client";
-import type { Product } from "@/lib/types/database";
+import type { Order } from "@/lib/types/database";
 
 import { Button, Pagination, SortDescriptor } from "@heroui/react";
 import { Plus } from "lucide-react";
@@ -8,30 +8,42 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 import ActiveFilters from "./ActiveFilters";
 import FiltersBar from "./FiltersBar";
-import ProductDataTable from "./ProductDataTable";
-import ProductForm from "./ProductForm";
+import OrderDataTable from "./OrderDataTable";
+import OrderForm from "./OrderForm";
 import ConfirmDialog from "./ConfirmDialog";
+import OrderDetailsModal from "./OrderDetailsModal";
 
 const statusOptions: Record<string, string> = {
-  disponible: "Disponible",
-  agotado: "Agotado",
-  descontinuado: "Descontinuado",
+  pendiente: "Pendiente",
+  pagado: "Pagado",
+  bodega: "Bodega",
+  transportando: "Transportando",
+  entregado: "Entregado",
 };
 
-export default function ProductTable() {
+const methodOptions: Record<string, string> = {
+  recoger: "Recoger",
+  domicilio: "Domicilio",
+};
+
+export default function OrderTable() {
   const [isLoading, setIsLoading] = useState(true);
-  const [list, setList] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [list, setList] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
-  const [editing, setEditing] = useState<Product | null>(null);
+  const [editing, setEditing] = useState<Order | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deletingSku, setDeletingSku] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+  const [editDetailsOpen, setEditDetailsOpen] = useState(false);
+  const [editingOrderDetails, setEditingOrderDetails] = useState<Order | null>(
+    null
+  );
 
   const { replace } = useRouter();
   const searchParams = useSearchParams();
@@ -44,13 +56,13 @@ export default function ProductTable() {
   const abortRef = useRef<AbortController | null>(null);
 
   // Parse comma-separated values from URL params
-  const selectedCategories = searchParams.get("categoria")?.split(",") || [];
+  const selectedMetodos = searchParams.get("metodo")?.split(",") || [];
   const selectedEstados = searchParams.get("estado")?.split(",") || [];
   const currentSearch = searchParams.get("search") || "";
 
   // Local selected state for instant UI feedback
-  const [selectedCats, setSelectedCats] = useState<Set<string>>(
-    new Set(selectedCategories.filter(Boolean))
+  const [selectedMets, setSelectedMets] = useState<Set<string>>(
+    new Set(selectedMetodos.filter(Boolean))
   );
   const [selectedStates, setSelectedStates] = useState<Set<string>>(
     new Set(selectedEstados.filter(Boolean))
@@ -71,7 +83,7 @@ export default function ProductTable() {
     val === "descending" ? "desc" : "asc";
 
   // Get sort params
-  const sortColumn = searchParams.get("sort") || "sku";
+  const sortColumn = searchParams.get("sort") || "fecha";
   const sortDirection = fromUrlOrder(searchParams.get("order"));
   const currentPage = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "10");
@@ -83,7 +95,7 @@ export default function ProductTable() {
 
   // Keep sortDescriptor in sync with URL to avoid desync on fast updates
   useEffect(() => {
-    const col = searchParams.get("sort") || "sku";
+    const col = searchParams.get("sort") || "fecha";
     const dir = fromUrlOrder(searchParams.get("order"));
 
     setSortDescriptor({ column: col, direction: dir });
@@ -139,13 +151,14 @@ export default function ProductTable() {
   };
 
   // Handle removing a category
-  const handleRemoveCategory = (category: string) => {
-    const newCategories = Array.from(selectedCats).filter(
-      (c) => c !== category
-    );
+  const handleMethodChange = (keys: Set<any> | string) => {
+    const selectedValues =
+      keys === "all"
+        ? Object.keys(methodOptions)
+        : Array.from(keys as Set<string>);
 
-    setSelectedCats(new Set(newCategories));
-    updateFilter("categoria", newCategories);
+    setSelectedStates(new Set(selectedValues));
+    updateFilter("metodo", selectedValues);
   };
 
   // Handle status selection changes with multiple possible values
@@ -193,31 +206,12 @@ export default function ProductTable() {
     const params = getLatestParams();
 
     // Only clear filters; keep current search text intact to avoid interference
-    params.delete("categoria");
+    params.delete("metodo");
     params.delete("estado");
     params.set("page", "1");
 
     startTransition(() => replace(`${pathname}?${params.toString()}`));
   };
-
-  // Fetch categories once when component mounts
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setIsLoadingCategories(true);
-      try {
-        const response = await fetch("/api/categories");
-        const data = await response.json();
-
-        setCategories(data);
-      } catch (error) {
-        /* no-op */
-      } finally {
-        setIsLoadingCategories(false);
-      }
-    };
-
-    fetchCategories();
-  }, []);
 
   // Fetch data (reusable) and cancel stale requests
   const fetchData = useCallback(async () => {
@@ -230,7 +224,7 @@ export default function ProductTable() {
     abortRef.current = controller;
 
     const requestId = ++requestIdRef.current;
-    const url = `/api/products/data?${searchParams.toString()}`;
+    const url = `/api/orders/data?${searchParams.toString()}`;
 
     try {
       const response = await fetch(url, { signal: controller.signal });
@@ -277,8 +271,8 @@ export default function ProductTable() {
 
   // Sync local selection state when URL changes externally
   useEffect(() => {
-    setSelectedCats(
-      new Set((searchParams.get("categoria")?.split(",") || []).filter(Boolean))
+    setSelectedMets(
+      new Set((searchParams.get("metodo")?.split(",") || []).filter(Boolean))
     );
     setSelectedStates(
       new Set((searchParams.get("estado")?.split(",") || []).filter(Boolean))
@@ -290,19 +284,11 @@ export default function ProductTable() {
       {/* Filters section - fixed at top */}
       <div className="flex-none space-y-4 mb-4">
         <FiltersBar
-          categories={categories}
-          isLoadingCategories={isLoadingCategories}
+          methodOptions={methodOptions}
           searchTerm={searchTerm}
-          selectedCats={selectedCats}
+          selectedMets={selectedMets}
           selectedStates={selectedStates}
           statusOptions={statusOptions}
-          onCategoriesChange={(keys: string | Set<any>) => {
-            const selectedValues =
-              keys === "all" ? categories : Array.from(keys as Set<string>);
-
-            setSelectedCats(new Set(selectedValues));
-            updateFilter("categoria", selectedValues);
-          }}
           onClearSearch={() => {
             setIsLoading(true);
             setSearchTerm("");
@@ -315,17 +301,18 @@ export default function ProductTable() {
             startTransition(() => replace(`${pathname}?${params.toString()}`));
           }}
           onKeyDown={handleKeyDown}
+          onMethodsChange={handleMethodChange}
           onSearch={handleSearch}
           onSearchChange={handleSearchChange}
           onStatesChange={handleStatusChange}
         />
 
         <ActiveFilters
-          selectedCats={selectedCats}
+          methodOptions={methodOptions}
+          selectedMets={selectedMets}
           selectedStates={selectedStates}
           statusOptions={statusOptions}
           onClearAll={clearFilters}
-          onRemoveCategory={handleRemoveCategory}
           onRemoveEstado={(estado: string) => {
             const newEstados = Array.from(selectedStates).filter(
               (s) => s !== estado
@@ -334,25 +321,36 @@ export default function ProductTable() {
             setSelectedStates(new Set(newEstados));
             updateFilter("estado", newEstados);
           }}
+          onRemoveMetodo={(metodo: string) => {
+            const newMethods = Array.from(selectedMets).filter(
+              (s) => s !== metodo
+            );
+
+            setSelectedMets(new Set(newMethods));
+            updateFilter("metodo", newMethods);
+          }}
         />
       </div>
 
       {/* Table section - scrollable */}
       <div className="flex-1 min-h-0 overflow-auto">
-        <ProductDataTable
+        <OrderDataTable
           items={list}
           loading={loading}
           sortDescriptor={sortDescriptor}
-          onDelete={async (sku: string) => {
-            setDeletingSku(sku);
+          onDelete={async (id: string) => {
+            setDeletingId(id);
             setConfirmOpen(true);
           }}
           onEdit={(item) => {
-            setFormMode("edit");
-            setEditing(item);
-            setFormOpen(true);
+            setEditingOrderDetails(item);
+            setEditDetailsOpen(true);
           }}
           onSortChange={handleSortChange}
+          onViewDetails={(item) => {
+            setViewingOrder(item);
+            setDetailsOpen(true);
+          }}
         />
       </div>
 
@@ -362,7 +360,7 @@ export default function ProductTable() {
           {/* Left: results count */}
           <div className="text-sm text-default-500 w-full text-center sm:text-left sm:flex-1">
             Mostrando {total === 0 ? 0 : (currentPage - 1) * limit + 1}–
-            {Math.min(total, currentPage * limit)} de {total} productos
+            {Math.min(total, currentPage * limit)} de {total} pedidos
           </div>
           {/* Middle: pagination */}
           <div className="w-full sm:flex-1 flex justify-center">
@@ -394,13 +392,13 @@ export default function ProductTable() {
                 setFormOpen(true);
               }}
             >
-              Añadir producto
+              Añadir pedido
             </Button>
           </div>
         </div>
       </div>
 
-      <ProductForm
+      <OrderForm
         initial={editing ?? undefined}
         isOpen={formOpen}
         mode={formMode}
@@ -415,26 +413,26 @@ export default function ProductTable() {
         cancelText="Cancelar"
         confirmText="Eliminar"
         description={
-          deletingSku
-            ? `¿Seguro que deseas eliminar el producto ${deletingSku}?`
+          deletingId
+            ? `¿Seguro que deseas eliminar el pedido ${deletingId}?`
             : undefined
         }
         isLoading={deleting}
         isOpen={confirmOpen}
-        title="Eliminar producto"
+        title="Eliminar pedido"
         variant="danger"
         onCancel={() => {
           setConfirmOpen(false);
-          setDeletingSku(null);
+          setDeletingId(null);
         }}
         onConfirm={async () => {
-          if (!deletingSku) return;
+          if (!deletingId) return;
 
           setDeleting(true);
           setIsLoading(true);
           try {
             const res = await fetch(
-              `/api/products/${encodeURIComponent(deletingSku)}`,
+              `/api/orders/${encodeURIComponent(deletingId)}`,
               { method: "DELETE" }
             );
 
@@ -459,7 +457,7 @@ export default function ProductTable() {
           } finally {
             setDeleting(false);
             setConfirmOpen(false);
-            setDeletingSku(null);
+            setDeletingId(null);
             // If request failed, stop page loading state
             setIsLoading(false);
           }
@@ -467,8 +465,29 @@ export default function ProductTable() {
         onOpenChange={(open) => {
           if (!open) {
             setConfirmOpen(false);
-            setDeletingSku(null);
+            setDeletingId(null);
           }
+        }}
+      />
+
+      <OrderDetailsModal
+        isOpen={detailsOpen}
+        order={viewingOrder}
+        onClose={() => {
+          setDetailsOpen(false);
+          setViewingOrder(null);
+        }}
+      />
+
+      <OrderDetailsModal
+        editable
+        isOpen={editDetailsOpen}
+        order={editingOrderDetails}
+        onClose={() => {
+          setEditDetailsOpen(false);
+          setEditingOrderDetails(null);
+          // Refrescar la lista después de editar
+          fetchData();
         }}
       />
 

@@ -1,11 +1,6 @@
 "use client";
 
-// ProductForm: Modal simple para crear o editar un producto.
-// - Campos: SKU, Nombre, Precio, Stock, Categoría y Estado.
-// - Validación con zod y manejo de formulario con react-hook-form.
-// - Enviar: POST (crear) o PATCH (editar) y cerrar el modal si todo va bien.
-
-import type { Product } from "@/lib/types/database";
+import type { Order } from "@/lib/types/database";
 
 import { useEffect, useState } from "react";
 import {
@@ -30,28 +25,40 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 // Props del componente
 type Props = {
-  initial?: Partial<Product>;
+  initial?: Partial<Order>;
   isOpen: boolean;
   mode: "create" | "edit";
   onClose: () => void;
-  onSaved?: (p: Product) => void;
+  onSaved?: (p: Order) => void;
 };
 
 // Opciones del campo "estado"
 const ESTADOS = [
-  { key: "disponible", label: "Disponible" },
-  { key: "agotado", label: "Agotado" },
-  { key: "descontinuado", label: "Descontinuado" },
+  { key: "pendiente", label: "Pendiente" },
+  { key: "pagado", label: "Pagado" },
+  { key: "bodega", label: "Bodega" },
+  { key: "transportando", label: "Transportando" },
+  { key: "entregado", label: "Entregado" },
+] as const;
+
+const METODOS = [
+  { key: "recoger", label: "Recoger" },
+  { key: "domicilio", label: "Domicilio" },
 ] as const;
 
 // Validación del formulario
 const Schema = z.object({
-  sku: z.string().min(1, "Requerido"),
-  nombre: z.string().min(1, "Requerido"),
-  precio: z.coerce.number().nonnegative("No puede ser negativo"),
-  stock: z.coerce.number().int().nonnegative("No puede ser negativo"),
-  categoria: z.string().min(1, "Requerido"),
-  estado: z.enum(["disponible", "agotado", "descontinuado"]),
+  id: z.string().min(1, "ID es requerido"),
+  fecha: z.string().min(1, "Fecha es requerida"),
+  cliente: z.string().min(1, "Cliente es requerido"),
+  estado: z.enum([
+    "pendiente",
+    "pagado",
+    "bodega",
+    "transportando",
+    "entregado",
+  ]),
+  metodoEntrega: z.enum(["recoger", "domicilio"]),
 });
 
 // Tipos de entrada/salida del esquema (zod v4)
@@ -79,12 +86,11 @@ export default function ProductForm({
     >,
     mode: "onChange",
     defaultValues: {
-      sku: "",
-      nombre: "",
-      precio: 0,
-      stock: 0,
-      categoria: "",
-      estado: "disponible",
+      id: "",
+      fecha: "",
+      cliente: "",
+      estado: "pendiente",
+      metodoEntrega: "recoger",
     } as any,
   });
 
@@ -92,12 +98,12 @@ export default function ProductForm({
   useEffect(() => {
     if (!isOpen) return;
     reset({
-      sku: initial?.sku ?? "",
-      nombre: initial?.nombre ?? "",
-      precio: initial?.precio ?? 0,
-      stock: initial?.stock ?? 0,
-      categoria: initial?.categoria ?? "",
-      estado: (initial?.estado as FormValues["estado"]) ?? "disponible",
+      id: initial?.id ?? "",
+      fecha: initial?.fecha ?? "",
+      cliente: initial?.cliente ?? "",
+      estado: (initial?.estado as FormValues["estado"]) ?? "pendiente",
+      metodoEntrega:
+        (initial?.metodoEntrega as FormValues["metodoEntrega"]) ?? "recoger",
     });
     setError(null);
   }, [isOpen, initial, reset]);
@@ -109,17 +115,17 @@ export default function ProductForm({
     try {
       // Aseguramos tipos correctos (precio/stock como number)
       const parsed = Schema.parse(values) as FormValues;
-      const payload: Product = { ...parsed } as Product;
+      const payload: Order = { ...parsed } as Order;
       const url = isEdit
-        ? `/api/products/${encodeURIComponent(payload.sku)}`
-        : "/api/products";
+        ? `/api/orders/${encodeURIComponent(payload.id)}`
+        : "/api/orders";
       const method = isEdit ? "PATCH" : "POST";
 
       const body = isEdit
         ? (() => {
             const rest = { ...payload } as Record<string, unknown>;
 
-            delete rest.sku; // no enviar sku en PATCH
+            delete rest.id; // no enviar id en PATCH
 
             return JSON.stringify(rest);
           })()
@@ -136,12 +142,12 @@ export default function ProductForm({
       if (!res.ok) throw new Error(json?.error || "Request failed");
 
       // Preferir el objeto devuelto por la API si existe
-      const saved: Product = (json?.data as Product) || payload;
+      const saved: Order = (json?.data as Order) || payload;
 
       onSaved?.(saved);
       onClose();
     } catch (e: any) {
-      setError(e?.message || "Error guardando el producto");
+      setError(e?.message || "Error guardando el pedido");
     } finally {
       setLoading(false);
     }
@@ -160,9 +166,7 @@ export default function ProductForm({
       onOpenChange={(open) => (!open ? onClose() : null)}
     >
       <ModalContent>
-        <ModalHeader>
-          {isEdit ? "Editar producto" : "Nuevo producto"}
-        </ModalHeader>
+        <ModalHeader>{isEdit ? "Editar pedido" : "Nuevo pedido"}</ModalHeader>
         <ModalBody>
           {error && <div className="text-danger text-sm">{error}</div>}
           <form
@@ -172,13 +176,13 @@ export default function ProductForm({
           >
             <Controller
               control={control}
-              name="sku"
+              name="id"
               render={({ field }) => (
                 <Input
-                  errorMessage={errors.sku?.message}
+                  errorMessage={errors.id?.message}
                   isDisabled={isEdit}
-                  isInvalid={!!errors.sku}
-                  label="SKU"
+                  isInvalid={!!errors.id}
+                  label="ID"
                   value={field.value}
                   onChange={(e) => field.onChange(e.target.value)}
                 />
@@ -187,12 +191,13 @@ export default function ProductForm({
 
             <Controller
               control={control}
-              name="nombre"
+              name="fecha"
               render={({ field }) => (
                 <Input
-                  errorMessage={errors.nombre?.message}
-                  isInvalid={!!errors.nombre}
-                  label="Nombre"
+                  errorMessage={errors.fecha?.message}
+                  isInvalid={!!errors.fecha}
+                  label="Fecha"
+                  type="datetime-local"
                   value={field.value}
                   onChange={(e) => field.onChange(e.target.value)}
                 />
@@ -201,43 +206,14 @@ export default function ProductForm({
 
             <Controller
               control={control}
-              name="precio"
+              name="cliente"
               render={({ field }) => (
                 <Input
-                  errorMessage={errors.precio?.message}
-                  isInvalid={!!errors.precio}
-                  label="Precio"
-                  type="number"
+                  errorMessage={errors.cliente?.message}
+                  isInvalid={!!errors.cliente}
+                  label="Cliente"
+                  type="text"
                   value={String(field.value)}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-              )}
-            />
-
-            <Controller
-              control={control}
-              name="stock"
-              render={({ field }) => (
-                <Input
-                  errorMessage={errors.stock?.message}
-                  isInvalid={!!errors.stock}
-                  label="Stock"
-                  type="number"
-                  value={String(field.value)}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-              )}
-            />
-
-            <Controller
-              control={control}
-              name="categoria"
-              render={({ field }) => (
-                <Input
-                  errorMessage={errors.categoria?.message}
-                  isInvalid={!!errors.categoria}
-                  label="Categoría"
-                  value={field.value}
                   onChange={(e) => field.onChange(e.target.value)}
                 />
               )}
@@ -251,7 +227,7 @@ export default function ProductForm({
                   errorMessage={errors.estado?.message}
                   isInvalid={!!errors.estado}
                   label="Estado"
-                  selectedKeys={new Set([field.value || "disponible"])}
+                  selectedKeys={new Set([field.value || "pendiente"])}
                   onSelectionChange={(keys) => {
                     const first = Array.from(keys as Set<string>)[0];
 
@@ -259,6 +235,28 @@ export default function ProductForm({
                   }}
                 >
                   {ESTADOS.map((s) => (
+                    <SelectItem key={s.key}>{s.label}</SelectItem>
+                  ))}
+                </Select>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="metodoEntrega"
+              render={({ field }) => (
+                <Select
+                  errorMessage={errors.metodoEntrega?.message}
+                  isInvalid={!!errors.metodoEntrega}
+                  label="Método"
+                  selectedKeys={new Set([field.value || "recoger"])}
+                  onSelectionChange={(keys) => {
+                    const first = Array.from(keys as Set<string>)[0];
+
+                    field.onChange(first as FormValues["metodoEntrega"]);
+                  }}
+                >
+                  {METODOS.map((s) => (
                     <SelectItem key={s.key}>{s.label}</SelectItem>
                   ))}
                 </Select>

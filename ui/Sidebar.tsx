@@ -41,7 +41,7 @@ export default function Sidebar() {
     };
   }, [supabase]);
 
-  const menuItems = ["Productos", "Pedidos", "Usuarios"];
+  const menuItems = ["Productos", "Pedidos"];
 
   return (
     <Navbar
