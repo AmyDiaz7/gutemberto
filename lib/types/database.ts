@@ -4,15 +4,13 @@ export type Product = {
   precio: number;
   stock: number;
   categoria: string;
-  estado: "disponible" | "agotado" | "descontinuado"; // This is the enum estados_producto
+  estado: "disponible" | "agotado" | "descontinuado";
 };
 
-/* Pedidos (id uuid, fecha timestamp, cliente int8, estado enum estados_pedido(pendiente, pagado, bodega, transportando, entregado), metodoEntrega enum metodo_entrega(recoger,domicilio)) 
-    DetallePedidos (id uuid, producto varchar, pedido uuid, cantidad int8)*/
 export type Order = {
   id: string;
-  fecha: string; // ISO date string
-  cliente: string; // Changed to string to match form input
+  fecha: string;
+  cliente: string;
   estado: "pendiente" | "pagado" | "bodega" | "transportando" | "entregado";
   metodoEntrega: "recoger" | "domicilio";
   nombreCliente?: string;

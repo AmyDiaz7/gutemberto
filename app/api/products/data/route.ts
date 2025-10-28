@@ -1,90 +1,112 @@
-// This file creates an API endpoint that fetches product data from a database
+// Importamos las herramientas necesarias para nuestra API
+import { NextResponse } from "next/server"; // Para enviar respuestas HTTP al cliente
+import { createClient } from "@supabase/supabase-js"; // Para conectarnos a la base de datos Supabase
 
-import { NextResponse } from "next/server"; // Used to send back responses from our API
-import { createClient } from "@supabase/supabase-js"; // Helps us connect to our Supabase database
-
-// Connect to our Supabase database using environment variables (secret keys)
+// Creamos la conexión a nuestra base de datos Supabase
+// Usamos variables de entorno para mantener seguras las credenciales
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!, // The URL of our database
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // The key to access our database
+  process.env.NEXT_PUBLIC_SUPABASE_URL!, // URL de nuestra base de datos
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // Clave de acceso público
 );
 
-// This function runs whenever someone visits /api/data with a GET request
+// Esta función maneja las peticiones GET (obtener/consultar productos)
+// Se ejecuta cuando alguien envía una petición GET a /api/products/data
 export async function GET(request: Request) {
-  // Get the URL and extract any parameters after the ? symbol (like ?sort=price&limit=20)
+  // PASO 1: Extraer los parámetros de búsqueda de la URL
+  // Por ejemplo: /api/products/data?sort=nombre&order=asc&page=1
   const { searchParams } = new URL(request.url);
 
-  // Get each parameter from the URL, with default values if they're not provided
-  const sort = searchParams.get("sort") || "sku"; // Which column to sort by (defaults to 'sku')
-  // Accept both asc/desc and ascending/descending
+  // Obtenemos el campo por el cual ordenar (por defecto "sku")
+  const sort = searchParams.get("sort") || "sku";
+
+  // Obtenemos el orden (ascendente o descendente)
   const rawOrder = (searchParams.get("order") || "asc").toLowerCase();
+  // Normalizamos el orden a "asc" o "desc"
   const order =
-    rawOrder === "descending" || rawOrder === "desc" ? "desc" : "asc"; // normalized
-  const limit = parseInt(searchParams.get("limit") || "10"); // How many products per page (defaults to 10)
-  const page = parseInt(searchParams.get("page") || "1"); // Which page to show (defaults to page 1)
-  const search = searchParams.get("search") || ""; // Text to search for (defaults to empty)
+    rawOrder === "descending" || rawOrder === "desc" ? "desc" : "asc";
 
-  // Get all values for multi-select filters
+  // Cuántos productos mostrar por página (por defecto 10)
+  const limit = parseInt(searchParams.get("limit") || "10");
+
+  // Número de página actual (por defecto 1)
+  const page = parseInt(searchParams.get("page") || "1");
+
+  // Texto de búsqueda para filtrar productos
+  const search = searchParams.get("search") || "";
+
+  // PASO 2: Procesar los filtros avanzados
+  // Categorías para filtrar (pueden ser múltiples, separadas por comas)
   const categorias = (searchParams.get("categoria")?.split(",") || []).filter(
-    Boolean
-  );
-  const estados = (searchParams.get("estado")?.split(",") || []).filter(
-    Boolean
+    Boolean // Elimina valores vacíos
   );
 
-  // Calculate where to start getting products from (for pagination)
-  // Example: on page 1 with limit 10, start at 0. On page 2, start at 10.
+  // Estados para filtrar (pueden ser múltiples, separados por comas)
+  const estados = (searchParams.get("estado")?.split(",") || []).filter(
+    Boolean // Elimina valores vacíos
+  );
+
+  // Calculamos desde qué registro empezar según la página
+  // Si estamos en página 2 con límite 10, empezamos desde el registro 10
   const offset = (page - 1) * limit;
 
-  // Start building our database query to get products
+  // PASO 3: Construir la consulta a la base de datos
+  // Creamos una consulta base que selecciona todos los campos de "Productos"
+  // count: "exact" nos permite saber cuántos productos hay en total
   let query = supabase.from("Productos").select("*", { count: "exact" });
 
-  // If the user is searching for something, add a filter to the query
+  // PASO 4: Aplicar filtro de búsqueda si existe
   if (search) {
-    // Try to convert search to a number for numeric fields
+    // Intentamos convertir la búsqueda a número
     const numericSearch = parseFloat(search);
 
+    // Si es un número, buscamos en campos numéricos (precio, stock) y en SKU
     if (!isNaN(numericSearch)) {
       query.or(`precio.eq.${search},stock.eq.${search},sku.ilike.%${search}%`);
     } else {
+      // Si no es número, buscamos solo en campos de texto (nombre y SKU)
+      // ilike es búsqueda sin distinguir mayúsculas/minúsculas
       query.or(`nombre.ilike.%${search}%,sku.ilike.%${search}%`);
     }
   }
 
-  // Apply categoria filter (if one or more selected)
+  // PASO 5: Aplicar filtro de categorías si se especificaron
   if (categorias.length > 0) {
+    // .in() busca productos cuya categoría esté en el array de categorías
     query = query.in("categoria", categorias);
   }
 
-  // Apply estado filter (if one or more selected)
+  // PASO 6: Aplicar filtro de estados si se especificaron
   if (estados.length > 0) {
+    // .in() busca productos cuyo estado esté en el array de estados
     query = query.in("estado", estados);
   }
 
-  // Sort the results by the column and direction specified
+  // PASO 7: Aplicar el ordenamiento
+  // Por ejemplo: ordenar por "nombre" de forma ascendente (A-Z)
   query = query.order(sort, { ascending: order === "asc" });
 
-  // Only get the specific "page" of results we need
+  // PASO 8: Aplicar paginación (limitar resultados)
+  // Si queremos página 1 con límite 10, obtenemos del 0 al 9
+  // Si queremos página 2 con límite 10, obtenemos del 10 al 19
   query = query.range(offset, offset + limit - 1);
 
-  // Now actually run the query we've built
+  // PASO 9: Ejecutar la consulta y esperar los resultados
   const { data, error, count } = await query;
 
-  // If something went wrong, return an error message
+  // PASO 10: Manejar errores de la base de datos
   if (error) {
-    console.error("Error fetching products:", error.message);
-
+    // Devolvemos un error 500 (error del servidor) si algo salió mal
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Return the products and information about the pagination
+  // PASO 11: Devolver los productos con información de paginación
   return NextResponse.json({
-    data, // The product data we found
+    data, // Los productos encontrados
     pagination: {
-      total: count, // Total number of products in the database
-      page, // Current page number
-      limit, // How many products per page
-      totalPages: Math.ceil((count || 0) / limit), // Calculate total number of pages
+      total: count, // Número total de productos (sin paginación)
+      page, // Página actual
+      limit, // Productos por página
+      totalPages: Math.ceil((count || 0) / limit), // Número total de páginas
     },
   });
 }

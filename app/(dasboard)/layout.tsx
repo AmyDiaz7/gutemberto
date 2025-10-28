@@ -1,3 +1,4 @@
+// Estructura base para el dashboard
 import Sidebar from "@/ui/Sidebar";
 
 export default function LoginLayout({

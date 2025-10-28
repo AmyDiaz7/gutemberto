@@ -8,15 +8,12 @@ import type { FormState } from "./types";
 // Hooks de React para manejar estado y efectos secundarios
 import { useState, useEffect, Suspense } from "react";
 // Componentes de interfaz de usuario de HeroUI
-import { Input, Button } from "@heroui/react";
+import { Input } from "@heroui/react";
 // Zod es una librería para validar datos (como validar que el email sea válido)
 import { z } from "zod";
 
 // Importamos el botón de login personalizado
 import LoginButton from "./components/loginButton";
-
-// Importamos la función signup (aunque no se usa en este componente)
-import { signup } from "@/lib/actions/loginActions";
 
 /**
  * FormSchema define las reglas de validación para el formulario
