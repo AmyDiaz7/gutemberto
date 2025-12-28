@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   // PASO 2: Verificar que tenemos los datos necesarios (token y tipo)
   if (token_hash && type) {
     // Creamos una conexión con Supabase para verificar el token
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // PASO 3: Intentar verificar el código OTP (One Time Password)
     // Esto confirma que el enlace del email es válido y no ha expirado
