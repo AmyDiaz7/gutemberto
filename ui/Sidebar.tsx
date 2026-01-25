@@ -97,6 +97,7 @@ export default function Sidebar() {
               size: "sm",
             }}
             className="text-center"
+            classNames={{ name: "truncate" }}
             description={userEmail ? "Administrador" : "Funcionario"}
             name={userEmail ?? "Invitado"}
           />
