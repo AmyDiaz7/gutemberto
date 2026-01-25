@@ -115,7 +115,7 @@ export default function Sidebar() {
               avatarProps={{
                 name: (userEmail ?? "G").slice(0, 1).toUpperCase(),
                 size: "sm",
-                classNames: { base: "hidden OOOOOOO" },
+                classNames: { base: "hidden" },
               }}
               className="w-full flex flex-col items-center text-center"
               classNames={{
@@ -123,7 +123,6 @@ export default function Sidebar() {
                 wrapper: "flex justify-center max-w-[100%]",
                 name: "w-full truncate text-center",
                 description: "text-center",
-                avatar: "hidden XXXXXXXXX",
               }}
               description={userEmail ? "Administrador" : "Funcionario"}
               name={userEmail ?? "Invitado"}
