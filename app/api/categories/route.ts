@@ -30,9 +30,6 @@ export async function GET() {
 
   // Si hubo un error al consultar la base de datos
   if (error) {
-    // Mostramos el error en la consola del servidor para debugging
-    console.error("Error fetching categories:", error);
-
     // Devolvemos un mensaje de error al cliente con código de estado 500
     // El código 500 significa "Error interno del servidor"
     return NextResponse.json({ error: error.message }, { status: 500 });

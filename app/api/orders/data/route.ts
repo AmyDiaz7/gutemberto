@@ -125,8 +125,6 @@ export async function GET(request: Request) {
 
   // Si hubo un error en la consulta, lo mostramos y devolvemos error 500
   if (error) {
-    console.error("Error fetching products:", error.message);
-
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

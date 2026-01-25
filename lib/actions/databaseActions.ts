@@ -17,8 +17,6 @@ export async function getProducts(): Promise<
   const { data, error } = await supabase.from("Productos").select("*");
 
   if (error) {
-    console.log(error.message);
-
     return [{ sku: "", nombre: "", precio: 0, stock: 0 }];
   }
 
