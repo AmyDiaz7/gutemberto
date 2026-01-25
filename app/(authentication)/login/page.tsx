@@ -73,6 +73,12 @@ export default function LoginPage() {
   const [invalidCredentials, setInvalidCredentials] = useState(false);
 
   /**
+   * Estado que indica si el formulario está enviándose (login en proceso)
+   * Se usa para mostrar un overlay y deshabilitar inputs
+   */
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /**
    * Función que se ejecuta cada vez que el usuario escribe en un campo del formulario
    * Actualiza el estado con el nuevo valor y quita el mensaje de credenciales inválidas
    */
@@ -142,7 +148,25 @@ export default function LoginPage() {
 
   return (
     // Contenedor principal: centrado, con fondo y sombra
-    <div className="bg-background container my-auto mx-auto max-w-sm py-16 px-10 rounded-lg drop-shadow">
+    <div className="bg-background container my-auto mx-auto max-w-sm py-16 px-10 rounded-lg drop-shadow relative">
+      {/* Overlay de carga mientras se intenta iniciar sesión */}
+      {isSubmitting && (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-md"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative h-10 w-10">
+              <div className="absolute inset-0 rounded-full border-4 border-primary/25" />
+              <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-primary" />
+            </div>
+            <span className="text-sm font-medium text-foreground/80">
+              Iniciando sesión...
+            </span>
+          </div>
+        </div>
+      )}
       {/* Título de la aplicación */}
       <h1 className="text-black font-title text-center text-3xl font-bold mb-8">
         Gutemberto
@@ -154,6 +178,7 @@ export default function LoginPage() {
         <Input
           isClearable // Muestra un botón X para limpiar el campo
           isRequired // Campo obligatorio (muestra un asterisco *)
+          isDisabled={isSubmitting}
           classNames={{
             base: "mb-6", // Margen inferior de 6 unidades
             label: "font-medium text-md", // Estilo de la etiqueta
@@ -182,6 +207,7 @@ export default function LoginPage() {
         {/* Campo de Contraseña */}
         <Input
           isRequired
+          isDisabled={isSubmitting}
           classNames={{
             // Si hay credenciales inválidas, reducimos el margen para mostrar el mensaje
             base: invalidCredentials ? "mb-2" : "mb-8",
@@ -222,6 +248,7 @@ export default function LoginPage() {
             setBlurredInputs={setBlurredInputs}
             setFormState={setFormState}
             setInvalidCredentials={setInvalidCredentials}
+            setIsSubmitting={setIsSubmitting}
           />
         </Suspense>
       </form>

@@ -2,11 +2,13 @@
 import type { FormState } from "../types";
 
 // Importamos SetStateAction de React para tipar las funciones que actualizan estados
-import { SetStateAction } from "react";
+import { SetStateAction, useEffect } from "react";
 // Importamos el componente Button de la librería de UI HeroUI
 import { Button } from "@heroui/react";
 // useSearchParams nos permite leer parámetros de la URL (como ?next=/dashboard)
 import { useSearchParams } from "next/navigation";
+// useFormStatus nos permite saber si el formulario está en proceso de envío
+import { useFormStatus } from "react-dom";
 
 // Importamos la función login que maneja la autenticación del usuario
 import { login } from "@/lib/actions/loginActions";
@@ -28,6 +30,8 @@ interface Props {
   setFormState: React.Dispatch<SetStateAction<FormState>>;
   // Función para indicar si las credenciales ingresadas son incorrectas
   setInvalidCredentials: React.Dispatch<SetStateAction<boolean>>;
+  // Función para indicar si el formulario está enviándose (loading)
+  setIsSubmitting: React.Dispatch<SetStateAction<boolean>>;
 }
 
 /**
@@ -42,7 +46,15 @@ export default function LoginButton({
   formState,
   setFormState,
   setInvalidCredentials,
+  setIsSubmitting,
 }: Props): React.FunctionComponentElement<Props> {
+  // Estado del formulario (pending = enviando)
+  const { pending } = useFormStatus();
+
+  // Sincronizamos el estado pending con el estado del padre
+  useEffect(() => {
+    setIsSubmitting(pending);
+  }, [pending, setIsSubmitting]);
   // Obtenemos los parámetros de la URL (ejemplo: si viene de /login?next=/dashboard)
   const searchParams = useSearchParams();
 
@@ -87,6 +99,8 @@ export default function LoginButton({
       color="primary" // Color primario del tema (generalmente azul)
       formAction={validateLogin} // Función que se ejecuta al hacer clic
       type="submit" // Tipo submit para que funcione con el formulario
+      isDisabled={pending}
+      isLoading={pending}
       onPointerDown={() => {
         // Cuando el usuario presiona el botón (antes de soltarlo),
         // marcamos ambos campos como "tocados" para mostrar errores si existen

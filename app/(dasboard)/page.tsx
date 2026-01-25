@@ -1,7 +1,7 @@
-import OrderTable from "./pedidos/components/OrderTable";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function App() {
-  return <OrderTable />;
+export default function App() {
+  redirect("/productos");
 }
